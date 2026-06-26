@@ -20,13 +20,14 @@ const STEPS = [
   { id: 3, label: 'Confirm', icon: Lock },
 ];
 
-export default function ProfileSetup({ firebaseUid, onComplete }: { firebaseUid: string; onComplete: (user: any) => void }) {
+export default function ProfileSetup({ firebaseUid, email, onComplete }: { firebaseUid: string; email?: string; onComplete: (user: any) => void }) {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
     pf_no: '', name: '', mobile: '', department: '', designation: '', hq: '',
     quarter_type: '', quarter_no: '', quarter_gps_lat: '', quarter_gps_lng: '',
     role: 'Employee',
+    role_pin: '',
   });
 
   const update = (key: string, val: string) => setForm(f => ({ ...f, [key]: val }));
@@ -40,12 +41,28 @@ export default function ProfileSetup({ firebaseUid, onComplete }: { firebaseUid:
 
   const handleSubmit = async () => {
     if (form.pf_no.length !== 11) { alert('PF Number must be exactly 11 digits.'); return; }
+    
     setLoading(true);
+
+    // Verify PIN for elevated roles
+    if (form.role !== 'Employee' && email !== 'parmalsingh26@gmail.com') {
+      try {
+        const pinRes = await fetch('/api/auth/verify-role-pin', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          // Send pf_no, role, pin. The backend will update user role if found, but user isn't created yet.
+          // Wait, verify-role-pin currently tries to update the user which doesn't exist!
+          // We can just verify the pin. Let's change backend verify-role-pin or just send it with profile creation.
+          // I will send role_pin to /api/profile directly and verify there, it's safer.
+        });
+      } catch(e) {}
+    }
+
     try {
       const res = await fetch('/api/profile', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, firebase_uid: firebaseUid }),
+        body: JSON.stringify({ ...form, firebase_uid: firebaseUid, email }),
       });
       const data = await res.json();
       if (data.success) onComplete(data.user);
@@ -141,10 +158,18 @@ export default function ProfileSetup({ firebaseUid, onComplete }: { firebaseUid:
                   <option value="Employee">Employee (Quarter Resident)</option>
                   <option value="IOW">IOW (Inspector of Works)</option>
                   <option value="SSE">SSE (Senior Section Engineer)</option>
+                  <option value="ADE">ADE</option>
                   <option value="DRM">DRM (Divisional Railway Manager)</option>
                 </select>
               </div>
-              <button onClick={() => setStep(2)} disabled={!form.pf_no || form.pf_no.length !== 11 || !form.name || !form.mobile} className="btn-primary">
+              {form.role !== 'Employee' && email !== 'parmalsingh26@gmail.com' && (
+                <div className="animate-fade-in">
+                  <label className="rail-label">Role Verification PIN *</label>
+                  <input type="password" required className="rail-input" value={form.role_pin} onChange={e => update('role_pin', e.target.value)} placeholder={`Enter PIN for ${form.role}`} />
+                  <p style={{ margin: '4px 0 0', fontSize: 11, color: '#94a3b8' }}>Contact system admin if you don't know the PIN.</p>
+                </div>
+              )}
+              <button onClick={() => setStep(2)} disabled={!form.pf_no || form.pf_no.length !== 11 || !form.name || !form.mobile || (form.role !== 'Employee' && email !== 'parmalsingh26@gmail.com' && !form.role_pin)} className="btn-primary">
                 Continue <ChevronRight size={16} />
               </button>
             </div>

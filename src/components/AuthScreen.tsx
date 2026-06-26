@@ -17,7 +17,7 @@ export default function AuthScreen({ onAuthenticated }: { onAuthenticated: (user
         const data = await res.json();
         onAuthenticated(data.user);
       } else {
-        onAuthenticated({ isNew: true, firebase_uid: firebaseUser.uid });
+        onAuthenticated({ isNew: true, firebase_uid: firebaseUser.uid, email: firebaseUser.email });
       }
     } catch (e) {
       console.error(e);

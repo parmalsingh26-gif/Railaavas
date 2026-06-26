@@ -69,7 +69,7 @@ function generateHash(data: string): string {
 }
 
 async function recordAudit(
-  ticketId: number,
+  ticketId: string,
   action: string,
   performedBy: string,
   gpsLocation?: string
@@ -164,15 +164,48 @@ app.post('/api/auth/hrms-verify', (_req, res) => {
 // PROFILE ROUTES
 // ============================================================
 app.post('/api/profile', async (req, res) => {
-  const { firebase_uid, pf_no, name, mobile, department, hq, designation, quarter_type, quarter_no, quarter_gps_lat, quarter_gps_lng, role } = req.body;
+  const { firebase_uid, email, pf_no, name, mobile, department, hq, designation, quarter_type, quarter_no, quarter_gps_lat, quarter_gps_lng, role, role_pin } = req.body;
   try {
+    let finalRole = role || 'Employee';
+    let isAdmin = false;
+
+    // Auto-admin for the creator
+    if (email === 'parmalsingh26@gmail.com') {
+      finalRole = 'Admin';
+      isAdmin = true;
+    } else if (finalRole !== 'Employee') {
+      // Verify PIN for elevated roles
+      const pinRecord = await prisma.rolePin.findUnique({ where: { role: finalRole } });
+      if (!pinRecord || pinRecord.pin !== role_pin) {
+        return res.status(400).json({ success: false, error: `Invalid verification PIN for role ${finalRole}` });
+      }
+    }
+
     const user = await prisma.user.create({
       data: {
-        firebase_uid, pf_no, name, mobile, department, hq,
+        firebase_uid, email, pf_no, name, mobile, department, hq,
         designation, quarter_type, quarter_no,
         quarter_gps_lat: quarter_gps_lat ? parseFloat(quarter_gps_lat) : null,
         quarter_gps_lng: quarter_gps_lng ? parseFloat(quarter_gps_lng) : null,
-        role: role || 'Employee',
+        role: finalRole,
+        is_admin: isAdmin,
+      },
+    });
+    res.json({ success: true, user });
+  } catch (error: any) {
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+app.put('/api/profile/:uid', async (req, res) => {
+  const { mobile, department, hq, designation, quarter_type, quarter_no, quarter_gps_lat, quarter_gps_lng } = req.body;
+  try {
+    const user = await prisma.user.update({
+      where: { firebase_uid: req.params.uid },
+      data: {
+        mobile, department, hq, designation, quarter_type, quarter_no,
+        quarter_gps_lat: quarter_gps_lat ? parseFloat(quarter_gps_lat) : null,
+        quarter_gps_lng: quarter_gps_lng ? parseFloat(quarter_gps_lng) : null,
       },
     });
     res.json({ success: true, user });
@@ -206,26 +239,62 @@ app.get('/api/sla-matrix', (_req, res) => {
 // TICKET ROUTES
 // ============================================================
 app.post('/api/tickets', async (req, res) => {
-  const { pf_no, category, sub_category, description } = req.body;
+  const { pf_no, category, sub_category, sub_categories, custom_issue, description } = req.body;
 
-  const matrixEntry = SLA_MATRIX[category]?.[sub_category];
-  const hours = matrixEntry?.hours ?? 48;
-  const priority = matrixEntry?.priority ?? 'Medium';
+  let maxHours = 48;
+  let highestPriority = 'Medium';
+  const priorityOrder = { 'Low': 1, 'Medium': 2, 'High': 3, 'Critical': 4 };
+
+  // Calculate SLA based on multi-select or single
+  const issuesToCheck = sub_categories && sub_categories.length > 0 ? sub_categories : (sub_category ? [sub_category] : []);
+  
+  if (issuesToCheck.length > 0) {
+    issuesToCheck.forEach((issue: string) => {
+      const entry = SLA_MATRIX[category]?.[issue];
+      if (entry) {
+        if (entry.hours < maxHours) maxHours = entry.hours; // Lower hours = tighter SLA
+        if (priorityOrder[entry.priority as keyof typeof priorityOrder] > priorityOrder[highestPriority as keyof typeof priorityOrder]) {
+          highestPriority = entry.priority;
+        }
+      }
+    });
+  } else if (custom_issue) {
+    maxHours = 72; // Default for custom issues
+    highestPriority = 'Medium';
+  }
 
   const SLA_deadline = new Date();
-  SLA_deadline.setHours(SLA_deadline.getHours() + hours);
+  SLA_deadline.setHours(SLA_deadline.getHours() + maxHours);
+
+  // Construct primary display string
+  let primarySubCategory = 'Custom Issue';
+  if (sub_categories && sub_categories.length > 0) {
+    primarySubCategory = sub_categories.join(', ');
+  } else if (sub_category) {
+    primarySubCategory = sub_category;
+  }
 
   try {
     const sixMonthsAgo = new Date();
     sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
 
     const previousIssues = await prisma.ticket.count({
-      where: { pf_no, category, sub_category, created_at: { gte: sixMonthsAgo } },
+      where: { pf_no, category, created_at: { gte: sixMonthsAgo } },
     });
     const major_overhaul = previousIssues >= 3;
 
     const ticket = await prisma.ticket.create({
-      data: { pf_no, category, sub_category, description, SLA_deadline, priority, major_overhaul },
+      data: { 
+        pf_no, 
+        category, 
+        sub_category: primarySubCategory, 
+        sub_categories: sub_categories ? JSON.stringify(sub_categories) : null,
+        custom_issue,
+        description, 
+        SLA_deadline, 
+        priority: highestPriority, 
+        major_overhaul 
+      },
     });
 
     await recordAudit(ticket.id, 'Ticket Submitted', pf_no);
@@ -267,7 +336,7 @@ app.get('/api/tickets', async (req, res) => {
 });
 
 app.get('/api/tickets/:id', async (req, res) => {
-  const ticket = await prisma.ticket.findUnique({ where: { id: parseInt(req.params.id) } });
+  const ticket = await prisma.ticket.findUnique({ where: { id: req.params.id } });
   if (ticket) res.json({ success: true, ticket });
   else res.status(404).json({ success: false, message: 'Not found' });
 });
@@ -276,7 +345,7 @@ app.get('/api/tickets/:id', async (req, res) => {
 app.post('/api/tickets/:id/seen', async (req, res) => {
   const { pf_no } = req.body;
   const ticket = await prisma.ticket.update({
-    where: { id: parseInt(req.params.id) },
+    where: { id: req.params.id },
     data: { status: 'Seen' },
   });
   await recordAudit(ticket.id, 'Ticket Seen by IOW', pf_no);
@@ -288,7 +357,7 @@ app.post('/api/tickets/:id/seen', async (req, res) => {
 app.post('/api/tickets/:id/inprogress', async (req, res) => {
   const { pf_no } = req.body;
   const ticket = await prisma.ticket.update({
-    where: { id: parseInt(req.params.id) },
+    where: { id: req.params.id },
     data: { status: 'In-Progress' },
   });
   await recordAudit(ticket.id, 'Work Started by IOW', pf_no);
@@ -300,7 +369,7 @@ app.post('/api/tickets/:id/inprogress', async (req, res) => {
 app.post('/api/tickets/:id/hold', async (req, res) => {
   const { pf_no, hold_reason } = req.body;
   const ticket = await prisma.ticket.update({
-    where: { id: parseInt(req.params.id) },
+    where: { id: req.params.id },
     data: { status: 'Pending-Material', hold_reason, pending_material_at: new Date() },
   });
   await recordAudit(ticket.id, `Marked Pending-Material: ${hold_reason}`, pf_no);
@@ -312,7 +381,7 @@ app.post('/api/tickets/:id/hold', async (req, res) => {
 app.post('/api/tickets/:id/assign', async (req, res) => {
   const { iow_pf, assigned_by } = req.body;
   const ticket = await prisma.ticket.update({
-    where: { id: parseInt(req.params.id) },
+    where: { id: req.params.id },
     data: { assigned_iow: iow_pf },
   });
   await recordAudit(ticket.id, `Assigned to IOW: ${iow_pf}`, assigned_by);
@@ -326,7 +395,7 @@ app.post('/api/tickets/:id/resolve', async (req, res) => {
   const { pf_no, lat, lng, photoUrl } = req.body;
 
   // Fetch ticket's employee to get their quarter GPS
-  const ticket = await prisma.ticket.findUnique({ where: { id: parseInt(id) } });
+  const ticket = await prisma.ticket.findUnique({ where: { id } });
   if (!ticket) return res.status(404).json({ success: false, message: 'Ticket not found' });
 
   const employee = await prisma.user.findUnique({ where: { pf_no: ticket.pf_no } });
@@ -352,7 +421,7 @@ app.post('/api/tickets/:id/resolve', async (req, res) => {
   const closure_otp = Math.floor(1000 + Math.random() * 9000).toString();
 
   const updated = await prisma.ticket.update({
-    where: { id: parseInt(id) },
+    where: { id },
     data: { status: 'Resolved', resolved_photo: photoUrl, closure_otp },
   });
 
@@ -365,14 +434,14 @@ app.post('/api/tickets/:id/resolve', async (req, res) => {
 // Close ticket via OTP handshake
 app.post('/api/tickets/:id/close', async (req, res) => {
   const { otp, pf_no } = req.body;
-  const ticket = await prisma.ticket.findUnique({ where: { id: parseInt(req.params.id) } });
+  const ticket = await prisma.ticket.findUnique({ where: { id: req.params.id } });
 
   if (!ticket || ticket.closure_otp !== otp) {
     return res.status(400).json({ success: false, message: 'Invalid or expired OTP.' });
   }
 
   const updated = await prisma.ticket.update({
-    where: { id: parseInt(req.params.id) },
+    where: { id: req.params.id },
     data: { status: 'Closed', closed_at: new Date(), closure_otp: null },
   });
 
@@ -389,9 +458,9 @@ app.post('/api/tickets/:id/close', async (req, res) => {
 app.post('/api/tickets/:id/extension', async (req, res) => {
   const { iow_pf, reason, requested_hours } = req.body;
   const request = await prisma.iOWExtensionRequest.create({
-    data: { ticket_id: parseInt(req.params.id), iow_pf, reason, requested_hours: parseInt(requested_hours) },
+    data: { ticket_id: req.params.id, iow_pf, reason, requested_hours: parseInt(requested_hours) },
   });
-  await recordAudit(parseInt(req.params.id), `SLA Extension Requested: +${requested_hours}h by ${iow_pf}`, iow_pf);
+  await recordAudit(req.params.id, `SLA Extension Requested: +${requested_hours}h by ${iow_pf}`, iow_pf);
   res.json({ success: true, request });
 });
 
@@ -407,7 +476,7 @@ app.get('/api/extensions/pending', async (_req, res) => {
 app.put('/api/extensions/:reqId', async (req, res) => {
   const { status, approved_by } = req.body; // Approved or Rejected
   const request = await prisma.iOWExtensionRequest.update({
-    where: { id: parseInt(req.params.reqId) },
+    where: { id: req.params.reqId },
     data: { status },
     include: { ticket: true },
   });
@@ -433,7 +502,7 @@ app.put('/api/extensions/:reqId', async (req, res) => {
 // ============================================================
 app.get('/api/audit/:ticketId', async (req, res) => {
   const ledger = await prisma.auditLedger.findMany({
-    where: { ticket_id: parseInt(req.params.ticketId) },
+    where: { ticket_id: req.params.ticketId },
     orderBy: { id: 'asc' },
   });
 
@@ -538,6 +607,67 @@ app.get('/api/reports/heatmap', async (_req, res) => {
     }));
 
   res.json({ success: true, heatmapData });
+});
+
+// ============================================================
+// ADMIN & ROLE PIN ROUTES
+// ============================================================
+app.get('/api/admin/users', async (req, res) => {
+  const users = await prisma.user.findMany({
+    orderBy: { created_at: 'desc' },
+  });
+  res.json({ success: true, users });
+});
+
+app.put('/api/admin/users/:pf/role', async (req, res) => {
+  const { role } = req.body;
+  try {
+    const user = await prisma.user.update({
+      where: { pf_no: req.params.pf },
+      data: { role },
+    });
+    res.json({ success: true, user });
+  } catch (error: any) {
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+app.get('/api/admin/pins', async (req, res) => {
+  const pins = await prisma.rolePin.findMany();
+  res.json({ success: true, pins });
+});
+
+app.post('/api/admin/pins', async (req, res) => {
+  const { role, pin } = req.body;
+  try {
+    const rolePin = await prisma.rolePin.upsert({
+      where: { role },
+      update: { pin, updated_at: new Date() },
+      create: { role, pin },
+    });
+    res.json({ success: true, rolePin });
+  } catch (error: any) {
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+app.post('/api/auth/verify-role-pin', async (req, res) => {
+  const { pf_no, role, pin } = req.body;
+  const rolePin = await prisma.rolePin.findUnique({ where: { role } });
+  
+  if (!rolePin || rolePin.pin !== pin) {
+    return res.status(400).json({ success: false, message: 'Invalid PIN for this role.' });
+  }
+
+  try {
+    const user = await prisma.user.update({
+      where: { pf_no },
+      data: { role },
+    });
+    res.json({ success: true, user });
+  } catch (error: any) {
+    res.status(400).json({ success: false, error: error.message });
+  }
 });
 
 // ============================================================

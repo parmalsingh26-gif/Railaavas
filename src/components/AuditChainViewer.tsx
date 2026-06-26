@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Shield, AlertTriangle, CheckCircle, Clock, MapPin, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface AuditEntry {
-  id: number;
+  id: string;
   action: string;
   performed_by: string;
   timestamp: string;
@@ -12,7 +12,7 @@ interface AuditEntry {
 }
 
 interface Props {
-  ticketId: number;
+  ticketId: string;
   onClose?: () => void;
 }
 
@@ -45,7 +45,7 @@ export default function AuditChainViewer({ ticketId, onClose }: Props) {
   const [ledger, setLedger] = useState<AuditEntry[]>([]);
   const [tampered, setTampered] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchAudit = async () => {

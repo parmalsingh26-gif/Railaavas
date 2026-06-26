@@ -7,6 +7,7 @@ import EmployeeDashboard from './components/EmployeeDashboard';
 import IOWDashboard from './components/IOWDashboard';
 import DRMDashboard from './components/DRMDashboard';
 import SSEDashboard from './components/SSEDashboard';
+import AdminDashboard from './components/AdminDashboard';
 
 function LoadingScreen() {
   return (
@@ -72,11 +73,11 @@ export default function App() {
             const data = await res.json();
             setUser(data.user);
           } else {
-            setUser({ isNew: true, firebase_uid: firebaseUser.uid });
+            setUser({ isNew: true, firebase_uid: firebaseUser.uid, email: firebaseUser.email });
           }
         } catch (e) {
           console.error('Profile fetch failed:', e);
-          setUser({ isNew: true, firebase_uid: firebaseUser.uid });
+          setUser({ isNew: true, firebase_uid: firebaseUser.uid, email: firebaseUser.email });
         }
       } else {
         setUser(null);
@@ -88,7 +89,7 @@ export default function App() {
 
   if (loading) return <LoadingScreen />;
   if (!user)   return <AuthScreen onAuthenticated={setUser} />;
-  if (user.isNew) return <ProfileSetup firebaseUid={user.firebase_uid} onComplete={setUser} />;
+  if (user.isNew) return <ProfileSetup firebaseUid={user.firebase_uid} email={user.email} onComplete={setUser} />;
 
   const handleLogout = () => setUser(null);
 
@@ -97,6 +98,7 @@ export default function App() {
     case 'IOW':      return <IOWDashboard      user={user} onLogout={handleLogout} />;
     case 'SSE':      return <SSEDashboard      user={user} onLogout={handleLogout} />;
     case 'DRM':      return <DRMDashboard      user={user} onLogout={handleLogout} />;
+    case 'Admin':    return <AdminDashboard    user={user} />;
     default:         return <EmployeeDashboard user={user} onLogout={handleLogout} />;
   }
 }

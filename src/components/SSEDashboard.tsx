@@ -5,7 +5,7 @@ import PriorityBadge from './PriorityBadge';
 import NotificationBell from './NotificationBell';
 
 interface Ticket {
-  id: number;
+  id: string;
   pf_no: string;
   category: string;
   sub_category: string;
@@ -24,8 +24,8 @@ interface IOW {
 }
 
 interface ExtensionRequest {
-  id: number;
-  ticket_id: number;
+  id: string;
+  ticket_id: string;
   iow_pf: string;
   reason: string;
   requested_hours: number;
@@ -39,7 +39,7 @@ export default function SSEDashboard({ user, onLogout }: { user: any; onLogout: 
   const [iows, setIows] = useState<IOW[]>([]);
   const [extensions, setExtensions] = useState<ExtensionRequest[]>([]);
   const [activeTab, setActiveTab] = useState<'tickets' | 'workload' | 'extensions'>('tickets');
-  const [assigning, setAssigning] = useState<Record<number, string>>({});
+  const [assigning, setAssigning] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
 
   const fetchAll = async () => {
@@ -61,7 +61,7 @@ export default function SSEDashboard({ user, onLogout }: { user: any; onLogout: 
 
   useEffect(() => { fetchAll(); }, []);
 
-  const assignTicket = async (ticketId: number, iow_pf: string) => {
+  const assignTicket = async (ticketId: string, iow_pf: string) => {
     if (!iow_pf) return;
     await fetch(`/api/tickets/${ticketId}/assign`, {
       method: 'POST',
@@ -71,7 +71,7 @@ export default function SSEDashboard({ user, onLogout }: { user: any; onLogout: 
     fetchAll();
   };
 
-  const handleExtension = async (reqId: number, status: 'Approved' | 'Rejected') => {
+  const handleExtension = async (reqId: string, status: 'Approved' | 'Rejected') => {
     await fetch(`/api/extensions/${reqId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },

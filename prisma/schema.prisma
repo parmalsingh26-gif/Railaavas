@@ -3,17 +3,18 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = "file:./dev.db"
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
 }
 
 model User {
-  id              Int      @id @default(autoincrement())
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
   firebase_uid    String   @unique
+  email           String?
   pf_no           String   @unique
   name            String
   mobile          String
-  role            String   // Employee, IOW, SSE, DRM
+  role            String   // Employee, IOW, SSE, DRM, ADE, Admin
   department      String?
   hq              String?
   designation     String?
@@ -21,6 +22,7 @@ model User {
   quarter_no      String?
   quarter_gps_lat Float?
   quarter_gps_lng Float?
+  is_admin        Boolean  @default(false)
   created_at      DateTime @default(now())
 
   tickets             Ticket[]             @relation("EmployeeTickets")
@@ -30,19 +32,21 @@ model User {
 }
 
 model Ticket {
-  id                  Int       @id @default(autoincrement())
+  id                  String    @id @default(auto()) @map("_id") @db.ObjectId
   pf_no               String
   category            String
-  sub_category        String
+  sub_category        String    // Primary issue (or comma-separated for multi)
+  sub_categories      String?   // JSON array of all selected issues
+  custom_issue        String?   // Free-text custom issue description
   description         String
   priority            String    @default("Medium") // Critical, High, Medium, Low
-  status              String    @default("Submitted") // Submitted, Seen, In-Progress, Pending-Material, Resolved, Closed
+  status              String    @default("Submitted")
   SLA_deadline        DateTime
   created_at          DateTime  @default(now())
   closed_at           DateTime?
   closure_otp         String?
   resolved_photo      String?
-  flag_color          String    @default("None") // None, Yellow, Orange, Red
+  flag_color          String    @default("None")
   major_overhaul      Boolean   @default(false)
   assigned_iow        String?
   hold_reason         String?
@@ -55,8 +59,8 @@ model Ticket {
 }
 
 model AuditLedger {
-  id            Int      @id @default(autoincrement())
-  ticket_id     Int
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  ticket_id     String   @db.ObjectId
   action        String
   performed_by  String
   timestamp     DateTime @default(now())
@@ -68,7 +72,7 @@ model AuditLedger {
 }
 
 model Notification {
-  id         Int      @id @default(autoincrement())
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
   user_pf    String
   title      String
   body       String
@@ -79,14 +83,21 @@ model Notification {
 }
 
 model IOWExtensionRequest {
-  id              Int      @id @default(autoincrement())
-  ticket_id       Int
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  ticket_id       String   @db.ObjectId
   iow_pf          String
   reason          String
   requested_hours Int
-  status          String   @default("Pending") // Pending, Approved, Rejected
+  status          String   @default("Pending")
   created_at      DateTime @default(now())
 
   ticket Ticket @relation(fields: [ticket_id], references: [id])
   iow    User   @relation(fields: [iow_pf], references: [pf_no])
+}
+
+model RolePin {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  role       String   @unique // IOW, SSE, DRM, ADE
+  pin        String
+  updated_at DateTime @default(now())
 }

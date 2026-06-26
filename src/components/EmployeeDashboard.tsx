@@ -5,6 +5,7 @@ import { LogOut, Camera, Plus, History, ChevronDown, ChevronUp, QrCode } from 'l
 import PriorityBadge from './PriorityBadge';
 import NotificationBell from './NotificationBell';
 import AuditChainViewer from './AuditChainViewer';
+import EditProfileModal from './EditProfileModal';
 
 const SLA_MATRIX: Record<string, string[]> = {
   'Civil':       ['Pipe Leak', 'Roof Seepage', 'Broken Door', 'Wall Crack', 'Floor Damage', 'Ceiling Damage', 'Plaster Falling', 'Compound Wall'],
@@ -58,16 +59,25 @@ function TicketTimeline({ status }: { status: string }) {
   );
 }
 
-export default function EmployeeDashboard({ user, onLogout }: { user: any; onLogout: () => void }) {
+export default function EmployeeDashboard({ user: initialUser, onLogout }: { user: any; onLogout: () => void }) {
+  const [user, setUser] = useState(initialUser);
   const [tickets, setTickets] = useState<any[]>([]);
   const [view, setView] = useState<'home' | 'raise' | 'history'>('home');
   const [showQR, setShowQR] = useState(false);
-  const [form, setForm] = useState({ category: '', sub_category: '', description: '' });
+  const [showEditProfile, setShowEditProfile] = useState(false);
+  
+  const [form, setForm] = useState<{ category: string; sub_categories: string[]; custom_issue: string; description: string }>({ 
+    category: '', 
+    sub_categories: [], 
+    custom_issue: '', 
+    description: '' 
+  });
+  
   const [submitting, setSubmitting] = useState(false);
-  const [expandedId, setExpandedId] = useState<number | null>(null);
-  const [auditTicketId, setAuditTicketId] = useState<number | null>(null);
-  const [otpInput, setOtpInput] = useState<Record<number, string>>({});
-  const [closingId, setClosingId] = useState<number | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [auditTicketId, setAuditTicketId] = useState<string | null>(null);
+  const [otpInput, setOtpInput] = useState<Record<string, string>>({});
+  const [closingId, setClosingId] = useState<string | null>(null);
   const qrRef = useRef<any>(null);
 
   useEffect(() => { fetchTickets(); }, []);
@@ -106,7 +116,7 @@ export default function EmployeeDashboard({ user, onLogout }: { user: any; onLog
       const data = await res.json();
       if (data.success) {
         setView('home');
-        setForm({ category: '', sub_category: '', description: '' });
+        setForm({ category: '', sub_categories: [], custom_issue: '', description: '' });
         fetchTickets();
       }
     } finally {
@@ -114,7 +124,19 @@ export default function EmployeeDashboard({ user, onLogout }: { user: any; onLog
     }
   };
 
-  const handleClose = async (ticketId: number) => {
+  const handleCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setForm({ ...form, category: e.target.value, sub_categories: [], custom_issue: '' });
+  };
+
+  const toggleSubCategory = (sub: string) => {
+    if (form.sub_categories.includes(sub)) {
+      setForm({ ...form, sub_categories: form.sub_categories.filter(s => s !== sub) });
+    } else {
+      setForm({ ...form, sub_categories: [...form.sub_categories, sub] });
+    }
+  };
+
+  const handleClose = async (ticketId: string) => {
     const otp = otpInput[ticketId];
     if (!otp || otp.length < 4) return;
     setClosingId(ticketId);
@@ -146,9 +168,16 @@ export default function EmployeeDashboard({ user, onLogout }: { user: any; onLog
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <NotificationBell userPf={user.pf_no} />
-            <button onClick={() => { logout(); onLogout(); }} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: 10, padding: 8, cursor: 'pointer', color: 'white', display: 'flex' }}>
-              <LogOut size={18} />
-            </button>
+            
+            {/* Account Settings */}
+            <div style={{ position: 'relative', display: 'flex', gap: 8 }}>
+              <button onClick={() => setShowEditProfile(true)} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: 10, padding: '6px 12px', cursor: 'pointer', color: 'white', display: 'flex', alignItems: 'center', fontSize: 12, fontWeight: 600 }}>
+                Edit Profile
+              </button>
+              <button onClick={() => { logout(); onLogout(); }} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: 10, padding: 8, cursor: 'pointer', color: 'white', display: 'flex' }}>
+                <LogOut size={18} />
+              </button>
+            </div>
           </div>
         </div>
       </header>
@@ -298,23 +327,54 @@ export default function EmployeeDashboard({ user, onLogout }: { user: any; onLog
               <form onSubmit={handleSubmit} style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
                 <div>
                   <label className="rail-label">Category *</label>
-                  <select required className="rail-input" value={form.category} onChange={e => setForm({ ...form, category: e.target.value, sub_category: '' })}>
+                  <select required className="rail-input" value={form.category} onChange={handleCategoryChange}>
                     <option value="">Select Department</option>
                     {Object.keys(SLA_MATRIX).map(c => <option key={c}>{c}</option>)}
                   </select>
                 </div>
                 {form.category && (
                   <div className="animate-fade-in">
-                    <label className="rail-label">Issue Type *</label>
-                    <select required className="rail-input" value={form.sub_category} onChange={e => setForm({ ...form, sub_category: e.target.value })}>
-                      <option value="">Select Issue</option>
-                      {SLA_MATRIX[form.category].map(s => <option key={s}>{s}</option>)}
-                    </select>
+                    <label className="rail-label">Select Issues (Multiple allowed) *</label>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, background: '#f8fafc', padding: 12, borderRadius: 10, border: '1px solid #e2e8f0' }}>
+                      {SLA_MATRIX[form.category].map(s => (
+                        <label key={s} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#1e293b', cursor: 'pointer' }}>
+                          <input 
+                            type="checkbox" 
+                            checked={form.sub_categories.includes(s)}
+                            onChange={() => toggleSubCategory(s)}
+                            style={{ width: 16, height: 16, accentColor: '#1a56db' }}
+                          />
+                          {s}
+                        </label>
+                      ))}
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#1e293b', cursor: 'pointer' }}>
+                        <input 
+                          type="checkbox" 
+                          checked={form.sub_categories.includes('Other / New Problem')}
+                          onChange={() => toggleSubCategory('Other / New Problem')}
+                          style={{ width: 16, height: 16, accentColor: '#1a56db' }}
+                        />
+                        Other / New Problem
+                      </label>
+                    </div>
                   </div>
                 )}
-                {form.sub_category && (
+                {form.sub_categories.includes('Other / New Problem') && (
+                  <div className="animate-fade-in">
+                    <label className="rail-label">Specify New Problem *</label>
+                    <input 
+                      required
+                      type="text" 
+                      className="rail-input" 
+                      placeholder="E.g. Pest control needed" 
+                      value={form.custom_issue} 
+                      onChange={e => setForm({ ...form, custom_issue: e.target.value })} 
+                    />
+                  </div>
+                )}
+                {form.sub_categories.length > 0 && (
                   <div className="animate-fade-in" style={{ background: '#f0f7ff', border: '1px solid #bfdbfe', borderRadius: 10, padding: '10px 14px', fontSize: 12, color: '#1e40af' }}>
-                    ℹ️ SLA & Priority will be auto-assigned based on your selection. IOWs cannot modify these values.
+                    ℹ️ SLA & Priority will be auto-assigned based on your most critical selection.
                   </div>
                 )}
                 <div>
@@ -323,7 +383,7 @@ export default function EmployeeDashboard({ user, onLogout }: { user: any; onLog
                 </div>
                 <div style={{ display: 'flex', gap: 10 }}>
                   <button type="button" onClick={() => setView('home')} className="btn-ghost" style={{ flex: 1 }}>Cancel</button>
-                  <button type="submit" disabled={submitting || !form.category || !form.sub_category || !form.description} className="btn-primary" style={{ flex: 2 }}>
+                  <button type="submit" disabled={submitting || !form.category || form.sub_categories.length === 0 || !form.description} className="btn-primary" style={{ flex: 2 }}>
                     {submitting ? '⏳ Submitting...' : '📤 Submit Complaint'}
                   </button>
                 </div>
@@ -359,6 +419,14 @@ export default function EmployeeDashboard({ user, onLogout }: { user: any; onLog
           </div>
         )}
       </main>
+
+      {showEditProfile && (
+        <EditProfileModal 
+          user={user} 
+          onClose={() => setShowEditProfile(false)} 
+          onUpdate={setUser} 
+        />
+      )}
     </div>
   );
 }

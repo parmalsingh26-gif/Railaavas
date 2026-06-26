@@ -19,10 +19,10 @@ export default function IOWDashboard({ user, onLogout }: { user: any; onLogout: 
   const [tickets, setTickets] = useState<any[]>([]);
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [gpsError, setGpsError] = useState<string | null>(null);
-  const [otpInputs, setOtpInputs] = useState<Record<number, string[]>>({});
+  const [otpInputs, setOtpInputs] = useState<Record<string, string[]>>({});
   const [holdModal, setHoldModal] = useState<any | null>(null);
-  const [auditId, setAuditId] = useState<number | null>(null);
-  const [processingId, setProcessingId] = useState<number | null>(null);
+  const [auditId, setAuditId] = useState<string | null>(null);
+  const [processingId, setProcessingId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchTickets();
@@ -39,7 +39,7 @@ export default function IOWDashboard({ user, onLogout }: { user: any; onLogout: 
     if (data.success) setTickets(data.tickets);
   };
 
-  const markStatus = async (id: number, endpoint: string) => {
+  const markStatus = async (id: string, endpoint: string) => {
     setProcessingId(id);
     await fetch(`/api/tickets/${id}/${endpoint}`, {
       method: 'POST',
@@ -64,7 +64,7 @@ export default function IOWDashboard({ user, onLogout }: { user: any; onLogout: 
     else alert('❌ ' + data.message);
   };
 
-  const handleClose = async (ticketId: number) => {
+  const handleClose = async (ticketId: string) => {
     const digits = otpInputs[ticketId] || ['', '', '', ''];
     const otp = digits.join('');
     if (otp.length < 4) return;
@@ -80,7 +80,7 @@ export default function IOWDashboard({ user, onLogout }: { user: any; onLogout: 
     else alert('❌ ' + data.message);
   };
 
-  const setOtpDigit = (ticketId: number, idx: number, val: string) => {
+  const setOtpDigit = (ticketId: string, idx: number, val: string) => {
     const digits = [...(otpInputs[ticketId] || ['', '', '', ''])];
     digits[idx] = val.replace(/\D/g, '').slice(0, 1);
     setOtpInputs(prev => ({ ...prev, [ticketId]: digits }));
