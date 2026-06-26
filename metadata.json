@@ -1,0 +1,11 @@
+{
+  "name": "RailAwaas Care",
+  "description": "Railway Quarter Maintenance Web Application",
+  "requestFramePermissions": [
+    "camera",
+    "geolocation"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

@@ -1,0 +1,92 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id              Int      @id @default(autoincrement())
+  firebase_uid    String   @unique
+  pf_no           String   @unique
+  name            String
+  mobile          String
+  role            String   // Employee, IOW, SSE, DRM
+  department      String?
+  hq              String?
+  designation     String?
+  quarter_type    String?
+  quarter_no      String?
+  quarter_gps_lat Float?
+  quarter_gps_lng Float?
+  created_at      DateTime @default(now())
+
+  tickets             Ticket[]             @relation("EmployeeTickets")
+  assignedTickets     Ticket[]             @relation("AssignedIOW")
+  notifications       Notification[]
+  extensionRequests   IOWExtensionRequest[]
+}
+
+model Ticket {
+  id                  Int       @id @default(autoincrement())
+  pf_no               String
+  category            String
+  sub_category        String
+  description         String
+  priority            String    @default("Medium") // Critical, High, Medium, Low
+  status              String    @default("Submitted") // Submitted, Seen, In-Progress, Pending-Material, Resolved, Closed
+  SLA_deadline        DateTime
+  created_at          DateTime  @default(now())
+  closed_at           DateTime?
+  closure_otp         String?
+  resolved_photo      String?
+  flag_color          String    @default("None") // None, Yellow, Orange, Red
+  major_overhaul      Boolean   @default(false)
+  assigned_iow        String?
+  hold_reason         String?
+  pending_material_at DateTime?
+
+  user               User                  @relation("EmployeeTickets", fields: [pf_no], references: [pf_no])
+  iow                User?                 @relation("AssignedIOW", fields: [assigned_iow], references: [pf_no])
+  audit_ledgers      AuditLedger[]
+  extension_requests IOWExtensionRequest[]
+}
+
+model AuditLedger {
+  id            Int      @id @default(autoincrement())
+  ticket_id     Int
+  action        String
+  performed_by  String
+  timestamp     DateTime @default(now())
+  gps_location  String?
+  previous_hash String
+  current_hash  String
+
+  ticket Ticket @relation(fields: [ticket_id], references: [id])
+}
+
+model Notification {
+  id         Int      @id @default(autoincrement())
+  user_pf    String
+  title      String
+  body       String
+  is_read    Boolean  @default(false)
+  created_at DateTime @default(now())
+
+  user User @relation(fields: [user_pf], references: [pf_no])
+}
+
+model IOWExtensionRequest {
+  id              Int      @id @default(autoincrement())
+  ticket_id       Int
+  iow_pf          String
+  reason          String
+  requested_hours Int
+  status          String   @default("Pending") // Pending, Approved, Rejected
+  created_at      DateTime @default(now())
+
+  ticket Ticket @relation(fields: [ticket_id], references: [id])
+  iow    User   @relation(fields: [iow_pf], references: [pf_no])
+}
