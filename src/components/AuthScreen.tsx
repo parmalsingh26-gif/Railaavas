@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { loginWithGoogle } from '../firebase';
-import { Train, Shield, AlertCircle } from 'lucide-react';
+import { Train, Shield, AlertCircle, Copy, Check } from 'lucide-react';
 
 export default function AuthScreen({ onAuthenticated }: { onAuthenticated: (user: any) => void }) {
   const [activeTab, setActiveTab] = useState<'google' | 'hrms'>('google');
@@ -9,19 +9,34 @@ export default function AuthScreen({ onAuthenticated }: { onAuthenticated: (user
   const [otpSent, setOtpSent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [loginSuccess, setLoginSuccess] = useState<{ user: any; isNew: boolean } | null>(null);
+  const [codeCopied, setCodeCopied] = useState(false);
 
   const handleGoogleSuccess = async (firebaseUser: any) => {
     try {
-      const res = await fetch(`/api/profile/${firebaseUser.uid}`);
+      const res = await fetch(`/api/profile/${firebaseUser.uid}?email=${encodeURIComponent(firebaseUser.email || '')}`);
       if (res.ok) {
         const data = await res.json();
-        onAuthenticated(data.user);
+        // Show unique code banner if user has one
+        if (data.user?.unique_code) {
+          setLoginSuccess({ user: data.user, isNew: false });
+          // Auto-proceed after 3 seconds
+          setTimeout(() => onAuthenticated(data.user), 3000);
+        } else {
+          onAuthenticated(data.user);
+        }
       } else {
         onAuthenticated({ isNew: true, firebase_uid: firebaseUser.uid, email: firebaseUser.email });
       }
     } catch (e) {
       console.error(e);
     }
+  };
+
+  const copyCode = (code: string) => {
+    navigator.clipboard.writeText(code);
+    setCodeCopied(true);
+    setTimeout(() => setCodeCopied(false), 2000);
   };
 
   const handleGoogleLogin = async () => {
@@ -60,6 +75,32 @@ export default function AuthScreen({ onAuthenticated }: { onAuthenticated: (user
 
   return (
     <div className="bg-auth-gradient" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, position: 'relative' }}>
+      {/* Unique Code Success Banner */}
+      {loginSuccess && (
+        <div className="animate-scale-in" style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999, padding: 16,
+        }}>
+          <div style={{ background: 'white', borderRadius: 24, padding: '28px 24px', maxWidth: 380, width: '100%', textAlign: 'center', boxShadow: '0 25px 50px rgba(0,0,0,0.4)' }}>
+            <div style={{ width: 64, height: 64, background: 'linear-gradient(135deg, #10b981, #059669)', borderRadius: 20, margin: '0 auto 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 30 }}>🎉</div>
+            <h2 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 800, color: '#1e293b' }}>Welcome back, {loginSuccess.user.name}!</h2>
+            <p style={{ margin: '0 0 20px', fontSize: 13, color: '#64748b' }}>{loginSuccess.user.role} · {loginSuccess.user.pf_no}</p>
+            {/* Unique Code Display */}
+            <div style={{ background: 'linear-gradient(135deg, #0f172a, #1e3a5f, #1a56db)', borderRadius: 16, padding: '16px 20px', marginBottom: 16 }}>
+              <p style={{ margin: '0 0 4px', fontSize: 10, color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700 }}>Your RailAwaas Identity Code</p>
+              <div style={{ fontSize: 28, fontWeight: 900, letterSpacing: 6, fontFamily: 'Courier New', color: '#93c5fd', margin: '4px 0' }}>{loginSuccess.user.unique_code}</div>
+              <p style={{ margin: '4px 0 0', fontSize: 10, color: 'rgba(255,255,255,0.4)' }}>Share with SSE/DRM for identification</p>
+            </div>
+            <button onClick={() => copyCode(loginSuccess.user.unique_code)} style={{ background: '#f0f7ff', border: '1px solid #bfdbfe', borderRadius: 10, padding: '8px 16px', cursor: 'pointer', fontSize: 13, color: '#1a56db', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, margin: '0 auto 16px' }}>
+              {codeCopied ? <><Check size={14} /> Copied!</> : <><Copy size={14} /> Copy Code</>}
+            </button>
+            <button onClick={() => onAuthenticated(loginSuccess.user)} className="btn-primary">
+              ✅ Continue to Dashboard
+            </button>
+            <p style={{ margin: '10px 0 0', fontSize: 11, color: '#94a3b8' }}>Auto-redirecting in 3 seconds...</p>
+          </div>
+        </div>
+      )}
       {/* Animated Background Circles */}
       <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none' }}>
         {[...Array(4)].map((_, i) => (

@@ -8,54 +8,105 @@ datasource db {
 }
 
 model User {
-  id              String   @id @default(auto()) @map("_id") @db.ObjectId
-  firebase_uid    String   @unique
-  email           String?
-  pf_no           String   @unique
-  name            String
-  mobile          String
-  role            String   // Employee, IOW, SSE, DRM, ADE, Admin
-  department      String?
-  hq              String?
-  designation     String?
-  quarter_type    String?
-  quarter_no      String?
-  quarter_gps_lat Float?
-  quarter_gps_lng Float?
-  is_admin        Boolean  @default(false)
-  created_at      DateTime @default(now())
+  id                    String   @id @default(auto()) @map("_id") @db.ObjectId
+  firebase_uid          String   @unique
+  email                 String?
+  pf_no                 String   @unique
+  name                  String
+  mobile                String
+  role                  String   // Employee, IOW, SSE, DRM, ADE, Admin
+  department            String?
+  hq                    String?
+  designation           String?
+  quarter_type          String?
+  quarter_no            String?
+  quarter_gps_lat       Float?
+  quarter_gps_lng       Float?
+  is_admin              Boolean  @default(false)
+  unique_code           String?  @unique  // RAIL-XXXX generated on first login
+  is_on_leave           Boolean  @default(false)
+  average_rating        Float?   // avg rating received (IOW)
+  created_at            DateTime @default(now())
 
   tickets             Ticket[]             @relation("EmployeeTickets")
   assignedTickets     Ticket[]             @relation("AssignedIOW")
   notifications       Notification[]
   extensionRequests   IOWExtensionRequest[]
+  nameChangeRequests  NameChangeRequest[]
+  visitSchedules      VisitSchedule[]
 }
 
 model Ticket {
-  id                  String    @id @default(auto()) @map("_id") @db.ObjectId
-  pf_no               String
-  category            String
-  sub_category        String    // Primary issue (or comma-separated for multi)
-  sub_categories      String?   // JSON array of all selected issues
-  custom_issue        String?   // Free-text custom issue description
-  description         String
-  priority            String    @default("Medium") // Critical, High, Medium, Low
-  status              String    @default("Submitted")
-  SLA_deadline        DateTime
-  created_at          DateTime  @default(now())
-  closed_at           DateTime?
-  closure_otp         String?
-  resolved_photo      String?
-  flag_color          String    @default("None")
-  major_overhaul      Boolean   @default(false)
-  assigned_iow        String?
-  hold_reason         String?
-  pending_material_at DateTime?
+  id                   String    @id @default(auto()) @map("_id") @db.ObjectId
+  pf_no                String
+  category             String
+  sub_category         String    // Primary issue (or comma-separated for multi)
+  sub_categories       String?   // JSON array of all selected issues
+  custom_issue         String?   // Free-text custom issue description
+  description          String
+  priority             String    @default("Medium") // Critical, High, Medium, Low
+  status               String    @default("Submitted")
+  SLA_deadline         DateTime
+  created_at           DateTime  @default(now())
+  closed_at            DateTime?
+  closure_otp          String?
+  resolved_photo       String?
+  flag_color           String    @default("None")
+  major_overhaul       Boolean   @default(false)
+  assigned_iow         String?
+  hold_reason          String?
+  pending_material_at  DateTime?
+
+  // New fields
+  visit_scheduled_at   DateTime?  // When IOW will visit
+  visit_notes          String?    // Notes from visit scheduling
+  work_photos          String?    // JSON array of photo URLs (before/after)
+  contractor_name      String?    // If contractor dispatched
+  estimated_cost       Float?     // Cost estimate by IOW
+  actual_cost          Float?     // Final actual cost after work
+  site_remark          String?    // IOW site remarks
+  rating               Int?       // 1-5 star rating by employee
+  rating_comment       String?    // Rating comment
+  urgency_escalated    Boolean   @default(false) // Employee pressed "Still Not Resolved"
+  urgency_escalated_at DateTime?
+  reassign_reason      String?    // Reason for IOW reassignment
+  reopen_requested     Boolean   @default(false)
+  reopened_at          DateTime?
 
   user               User                  @relation("EmployeeTickets", fields: [pf_no], references: [pf_no])
   iow                User?                 @relation("AssignedIOW", fields: [assigned_iow], references: [pf_no])
   audit_ledgers      AuditLedger[]
   extension_requests IOWExtensionRequest[]
+  visit_schedules    VisitSchedule[]
+}
+
+model VisitSchedule {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  ticket_id     String   @db.ObjectId
+  iow_pf        String
+  scheduled_at  DateTime
+  time_slot     String   // e.g. "10:00-12:00"
+  notes         String?
+  created_by    String   // SSE or IOW pf_no
+  status        String   @default("Scheduled") // Scheduled, Completed, Cancelled
+  created_at    DateTime @default(now())
+
+  ticket Ticket @relation(fields: [ticket_id], references: [id])
+  iow    User   @relation(fields: [iow_pf], references: [pf_no])
+}
+
+model NameChangeRequest {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  user_pf      String
+  old_name     String
+  new_name     String
+  reason       String
+  status       String   @default("Pending") // Pending, Approved, Rejected
+  reviewed_by  String?
+  created_at   DateTime @default(now())
+  reviewed_at  DateTime?
+
+  user User @relation(fields: [user_pf], references: [pf_no])
 }
 
 model AuditLedger {
@@ -100,4 +151,13 @@ model RolePin {
   role       String   @unique // IOW, SSE, DRM, ADE
   pin        String
   updated_at DateTime @default(now())
+}
+
+model Broadcast {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  title      String
+  body       String
+  sent_by    String
+  target_role String?  // null = all, or specific role
+  created_at DateTime @default(now())
 }

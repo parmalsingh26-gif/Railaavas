@@ -68,7 +68,7 @@ export default function App() {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         try {
-          const res = await fetch(`/api/profile/${firebaseUser.uid}`);
+          const res = await fetch(`/api/profile/${firebaseUser.uid}?email=${encodeURIComponent(firebaseUser.email || '')}`);
           if (res.ok) {
             const data = await res.json();
             setUser(data.user);
@@ -98,7 +98,7 @@ export default function App() {
     case 'IOW':      return <IOWDashboard      user={user} onLogout={handleLogout} />;
     case 'SSE':      return <SSEDashboard      user={user} onLogout={handleLogout} />;
     case 'DRM':      return <DRMDashboard      user={user} onLogout={handleLogout} />;
-    case 'Admin':    return <AdminDashboard    user={user} />;
+    case 'Admin':    return <AdminDashboard    user={user} onLogout={handleLogout} />;
     default:         return <EmployeeDashboard user={user} onLogout={handleLogout} />;
   }
 }

@@ -711,3 +711,366 @@ body {
   border-top: 1px solid var(--border-color);
   margin: 0;
 }
+
+/* ============================================================
+   UNIQUE CODE CARD
+   ============================================================ */
+.unique-code-card {
+  background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 60%, #1a56db 100%);
+  border-radius: 16px;
+  padding: 16px 20px;
+  color: white;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+.unique-code-card::before {
+  content: '';
+  position: absolute;
+  top: -30px; right: -30px;
+  width: 100px; height: 100px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.05);
+}
+.unique-code-value {
+  font-size: 24px;
+  font-weight: 900;
+  letter-spacing: 4px;
+  font-family: 'Courier New', monospace;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  color: #93c5fd;
+}
+
+/* ============================================================
+   STAR RATING
+   ============================================================ */
+.star-rating {
+  display: flex;
+  gap: 4px;
+}
+.star-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 24px;
+  padding: 2px;
+  transition: transform 0.15s ease;
+  line-height: 1;
+}
+.star-btn:hover { transform: scale(1.2); }
+.star-filled { color: #f59e0b; }
+.star-empty  { color: #e2e8f0; }
+
+/* ============================================================
+   VISIT CALENDAR CARD
+   ============================================================ */
+.visit-card {
+  background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+  border: 1px solid #a7f3d0;
+  border-left: 4px solid #059669;
+  border-radius: 14px;
+  padding: 14px 16px;
+}
+.visit-card-orange {
+  background: linear-gradient(135deg, #fff7ed, #fed7aa);
+  border: 1px solid #fdba74;
+  border-left: 4px solid #f97316;
+}
+
+/* ============================================================
+   HEALTH SCORE RING
+   ============================================================ */
+@keyframes score-ring {
+  from { stroke-dashoffset: 283; }
+  to   { stroke-dashoffset: var(--target-offset); }
+}
+.health-score-ring {
+  animation: score-ring 1.2s cubic-bezier(0.22,1,0.36,1) forwards;
+}
+
+/* ============================================================
+   LIVE TICKER
+   ============================================================ */
+@keyframes ticker-scroll {
+  0%   { transform: translateX(100%); }
+  100% { transform: translateX(-100%); }
+}
+.ticker-track {
+  overflow: hidden;
+  white-space: nowrap;
+}
+.ticker-content {
+  display: inline-block;
+  animation: ticker-scroll 20s linear infinite;
+}
+
+/* ============================================================
+   CATEGORY DONUT CHART
+   ============================================================ */
+.donut-chart {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.donut-label {
+  position: absolute;
+  text-align: center;
+  pointer-events: none;
+}
+
+/* ============================================================
+   PENDING OWNER ROW
+   ============================================================ */
+.owner-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  background: white;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  transition: all 0.2s;
+}
+.owner-row:hover {
+  border-color: #bfdbfe;
+  box-shadow: 0 2px 8px rgba(26,86,219,0.08);
+}
+.owner-arrow {
+  color: #94a3b8;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+.owner-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.owner-chip-employee { background: #eff6ff; color: #1d4ed8; }
+.owner-chip-iow { background: #fff7ed; color: #c2410c; }
+.owner-chip-unassigned { background: #f1f5f9; color: #94a3b8; border: 1px dashed #e2e8f0; }
+
+/* ============================================================
+   PROGRESS RING ANIMATION
+   ============================================================ */
+@keyframes progress-fill {
+  from { stroke-dashoffset: 220; }
+  to   { stroke-dashoffset: var(--dash-offset); }
+}
+
+/* ============================================================
+   IOW PERFORMANCE CARD
+   ============================================================ */
+.perf-card {
+  background: white;
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+  padding: 16px;
+  transition: all 0.2s;
+}
+.perf-card:hover {
+  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+  transform: translateY(-2px);
+}
+
+/* ============================================================
+   DARK MODE SUPPORT
+   ============================================================ */
+.dark-mode {
+  --surface-1: #1e293b;
+  --surface-2: #0f172a;
+  --surface-3: #1e293b;
+  --border-color: rgba(255,255,255,0.1);
+  color: #e2e8f0;
+}
+.dark-mode .rail-input {
+  background: #1e293b;
+  color: #e2e8f0;
+  border-color: rgba(255,255,255,0.15);
+}
+.dark-mode .rail-label { color: #94a3b8; }
+.dark-mode .btn-ghost { color: #94a3b8; border-color: rgba(255,255,255,0.15); }
+.dark-mode .btn-ghost:hover { background: rgba(255,255,255,0.05); }
+
+/* ============================================================
+   FILTER PILL TABS
+   ============================================================ */
+.filter-pills {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 4px 0;
+}
+.filter-pill {
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1.5px solid #e2e8f0;
+  background: white;
+  color: #64748b;
+  transition: all 0.15s ease;
+}
+.filter-pill:hover { border-color: #94a3b8; }
+.filter-pill-active {
+  background: #1a56db;
+  color: white;
+  border-color: #1a56db;
+}
+.filter-pill-red-active { background: #dc2626; border-color: #dc2626; color: white; }
+.filter-pill-amber-active { background: #d97706; border-color: #d97706; color: white; }
+.filter-pill-green-active { background: #059669; border-color: #059669; color: white; }
+
+/* ============================================================
+   WORKLOAD TREEMAP BARS
+   ============================================================ */
+.workload-bar-container {
+  height: 16px;
+  background: #f1f5f9;
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+}
+.workload-segment {
+  height: 100%;
+  transition: width 0.6s ease;
+}
+
+/* ============================================================
+   STATS TICKER STRIP
+   ============================================================ */
+.stats-strip {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding: 4px 0 8px;
+  scrollbar-width: none;
+}
+.stats-strip::-webkit-scrollbar { display: none; }
+.stats-strip-item {
+  flex-shrink: 0;
+  background: white;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  padding: 10px 16px;
+  text-align: center;
+  min-width: 90px;
+}
+
+/* ============================================================
+   ALERT / URGENCY BANNER
+   ============================================================ */
+.urgency-banner {
+  background: linear-gradient(135deg, #fef2f2, #fff1f2);
+  border: 1px solid #fecaca;
+  border-left: 4px solid #ef4444;
+  border-radius: 12px;
+  padding: 12px 16px;
+  animation: pulse-red 2s ease-in-out infinite;
+}
+.urgency-banner-orange {
+  background: linear-gradient(135deg, #fff7ed, #fef3c7);
+  border: 1px solid #fed7aa;
+  border-left: 4px solid #f97316;
+  animation: none;
+}
+
+/* ============================================================
+   PRINT MEDIA
+   ============================================================ */
+@media print {
+  header, nav, button, .notif-panel { display: none !important; }
+  body { background: white; }
+  .modal-overlay { display: none; }
+}
+
+/* ============================================================
+   SEARCH INPUT
+   ============================================================ */
+.search-input-wrap {
+  position: relative;
+}
+.search-input-wrap .search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #94a3b8;
+  pointer-events: none;
+}
+.search-input-wrap .rail-input {
+  padding-left: 38px;
+}
+
+/* ============================================================
+   RESPONSIVE GRID HELPERS
+   ============================================================ */
+@media (max-width: 480px) {
+  .grid-2-sm-1 { grid-template-columns: 1fr !important; }
+  .grid-3-sm-2 { grid-template-columns: 1fr 1fr !important; }
+}
+
+/* ============================================================
+   TAB SWITCHER
+   ============================================================ */
+.tab-switcher {
+  display: flex;
+  gap: 4px;
+}
+.tab-btn {
+  flex: 1;
+  padding: 9px 10px;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+.tab-btn:hover { background: rgba(0,0,0,0.05); color: #1e293b; }
+.tab-btn-active {
+  background: white;
+  color: #1a56db;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+/* ============================================================
+   SLIDE DOWN ANIMATION
+   ============================================================ */
+@keyframes slide-down {
+  from { opacity: 0; transform: translateY(-8px); max-height: 0; }
+  to   { opacity: 1; transform: translateY(0);    max-height: 200px; }
+}
+.animate-slide-down {
+  animation: slide-down 0.25s ease forwards;
+  overflow: hidden;
+}
+
+/* ============================================================
+   OTP INPUT BOX
+   ============================================================ */
+.otp-input-box {
+  width: 44px;
+  height: 52px;
+  text-align: center;
+  font-size: 22px;
+  font-weight: 800;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  outline: none;
+  transition: all 0.2s;
+  color: #1e293b;
+  background: white;
+}
+.otp-input-box:focus {
+  border-color: #1a56db;
+  box-shadow: 0 0 0 3px rgba(26,86,219,0.15);
+}
